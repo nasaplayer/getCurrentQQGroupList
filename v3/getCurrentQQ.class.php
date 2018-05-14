@@ -1,20 +1,86 @@
 <?php
 
-$json ='';
-
-$gc =186144206;
-$qq = new getCurrentQQ();
-$json = $qq->getGroupMembers($gc);
-
-$qq->echoJSON($json);
-
-
 
 class getCurrentQQ{
 	
 	protected $bkn='';
 	protected $Cookie='';
 	
+	private $showCurlInfo = 0;//1-开启
+	
+public function co($val){
+	echo '<pre>';
+	print_r($val);
+	echo '</pre>';
+}
+
+
+public function getGroupMemberArr($gc=NULL,$gn=NULL){
+	
+	$json = $this->getGroupMember($gc);
+	
+	$arrData= [];
+	$arr = json_decode($json,TRUE);//默认是对象，为True是数组
+	$mems = $arr['mems']??[];
+	for($i=0;$i<count($mems);$i++){
+		$row = $mems[$i];
+		extract($row);
+		
+		$gArr = [
+			0=>'男',
+			1=>'女',
+			255=>'未知',
+		];
+		
+		$roleArr = [
+			'群主','管理员','成员'
+		];
+		
+		$qage =$qage??0;
+		
+		$newRow=[
+			'群名称'=>$gn??'小葵花',
+			'群号'=>$gc??169352216,
+			'角色'=>$roleArr[$role],
+			'QQ号'=>$uin,
+			'昵称'=>$nick,
+			'群名片'=>$card,
+			'性别'=>$gArr[$g],
+			'Q龄'=>$qage,
+			'入群时间'=>date('Y-m-d H:i',$join_time),
+			'最后发言时间'=>date('Y-m-d H:i',$last_speak_time),
+			'入群距今(天)'=>$this->day($join_time),
+			'最后发言距今(天)'=>$this->day($last_speak_time),
+			'年龄'=>$qage+16,
+		];
+		$arrData[] = $newRow;
+	}//end for
+	return $arrData;
+}//getGroupMemberArr
+
+
+public function day($time):int{
+	$day = 0;
+	$day =( time()-$time )/86400;
+	$day =ceil($day);
+	return $day;
+}
+
+
+public function getGroupListArr(){
+	
+	$json = $this->getGroupList();
+	
+	$arr = json_decode($json,TRUE);//默认是对象，为True是数组
+	
+	$create = $arr['create']??[];
+	$join = $arr['join']??[];
+	$manage = $arr['manage']??[];
+	
+	$arr = array_merge($create,$join,$manage);
+	return $arr;
+}//getGroupArr
+
 public function __construct(){
 	$token = $this->getToken();
 	
@@ -27,13 +93,28 @@ public function __construct(){
 	$richURL = $arr['url'];
 	
 	$p_skey =$this->getPSkey($richURL,$skey);
+	
 	$this->bkn = $this->getBkn($skey);
 	$this->Cookie = "Cookie: p_skey={$p_skey};uin=o{$uin} ;skey={$skey}";
 		
 }
 
+public function getGroupList(){//$bkn,$Cookie
+	$bkn = $this->bkn;
+	$Cookie = $this->Cookie;
+	$url = 'https://qun.qq.com/cgi-bin/qun_mgr/get_group_list';
+	$post = [
+		'bkn'=>$bkn
+	];
+	$header =[
+		$Cookie,
+	];
+	
+	$json = $this->oneCURL($url,$header,$post);
+	return $json;
+}//getGroupList
 
-public function getGroupMembers($gc){//$bkn,$Cookie,$gc
+public function getGroupMember($gc){//$bkn,$Cookie,$gc
 	$bkn = $this->bkn;
 	$Cookie = $this->Cookie;
 	$url = 'https://qun.qq.com/cgi-bin/qun_mgr/search_group_members';
@@ -52,6 +133,8 @@ public function getGroupMembers($gc){//$bkn,$Cookie,$gc
 	$json = $this->oneCURL($url,$header,$post);
 	return $json;
 }
+
+
 
 
 public function oneCURL($url,$header,$post){
@@ -78,20 +161,7 @@ public function echoJSON($json){
 	echo '</pre>';
 }
 
-public function getGroupList(){//$bkn,$Cookie
-	$bkn = $this->bkn;
-	$Cookie = $this->Cookie;
-	$url = 'https://qun.qq.com/cgi-bin/qun_mgr/get_group_list';
-	$post = [
-		'bkn'=>$bkn
-	];
-	$header =[
-		$Cookie,
-	];
-	
-	$json = $this->oneCURL($url,$header,$post);
-	return $json;
-}
+
 
 public function charCodeAt($str, $index){
     $char = mb_substr($str, $index, 1, 'UTF-8');
@@ -307,6 +377,7 @@ public function getCookie($header,$name){
 
 public function tellMe($text,$header,$body=null){
 
+if($this->showCurlInfo ===1){
 echo '<div style="maring:10px;padding:5px;border:1px solid pink;overflow:hidden;">';
 	echo '<h3>'.$text.'响应头</h3>';
 		echo '<pre>';
@@ -321,6 +392,9 @@ echo '<div style="maring:10px;padding:5px;border:1px solid pink;overflow:hidden;
 	}
 	
 echo '</div>';
+	
+}
+
 
 
 }//end tellMe
